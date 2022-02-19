@@ -1,0 +1,10 @@
+{
+	port: 53,
+	nameservers: ["127.0.0.1:5369"],
+	siaPortals: [
+		"https://handysky.hns.is/",
+		"https://siasky.net/",
+		"https://skynetpro.dev/",
+	],
+	rootNameserver: "127.0.0.1:5341",
+}

@@ -1,0 +1,16 @@
+{
+  "name": "skyname",
+  "version": "1.0.0",
+  "description": "NS in skynet",
+  "main": "index.js",
+  "repository": "https://github.com/angrymouse/skyname",
+  "author": "Angrymouse <nik@hns.is>",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "cacheable-lookup": "^6.0.4",
+    "dns2": "^2.0.1",
+    "json5": "^2.2.0",
+    "node-fetch": "^3.2.0"
+  }
+}
