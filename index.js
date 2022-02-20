@@ -1,12 +1,14 @@
 const fs = require("fs");
 const JSON5 = require("json5");
 const { UDPClient } = require("dns2");
-
+const levelup = require("levelup");
+const leveldown = require("leveldown");
 const CacheableLookup = require("cacheable-lookup");
 const lookup = new CacheableLookup();
 const config = JSON5.parse(fs.readFileSync("./config.json5"));
 lookup.servers = config.nameservers;
 let mainPortal = config.siaPortals[0];
+let skylinkCache = levelup(leveldown("./record_cache"));
 (async () => {
 	const dns2 = require("dns2");
 
@@ -124,6 +126,11 @@ async function getAlivePortal() {
 	});
 }
 async function fetchSia(siaLink) {
+	let cached = await skylinkCache.get(siaLink);
+	let resolverSkylink;
+	if (cached) {
+		return cached;
+	}
 	const fetch = (await import("node-fetch")).default;
 	let resource;
 	try {
@@ -132,11 +139,11 @@ async function fetchSia(siaLink) {
 		});
 		if (siaLink == fileMeta.headers.get("skynet-skylink")) {
 			resource = fileMeta;
+			resolverSkylink = false;
 		} else {
 			siaLink = fileMeta.headers.get("skynet-skylink");
-			resource = await fetch(mainPortal + siaLink, {
-				headers: { "User-agent": "Sia-Agent" },
-			});
+			resource = await fetchSia(siaLink);
+			resolverSkylink = true;
 		}
 		if (
 			resource.headers.get("content-length") > 20480 ||
@@ -144,7 +151,11 @@ async function fetchSia(siaLink) {
 		) {
 			return null;
 		} else {
-			return await resource.json();
+			let data = await resource.json();
+			if (!resolverSkylink) {
+				skylinkCache.put(siaLink, data);
+			}
+			return data;
 		}
 	} catch (error) {
 		return null;
