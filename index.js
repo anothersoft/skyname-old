@@ -44,6 +44,7 @@ let mainPortal = config.siaPortals[0];
 			} else {
 				recordsLink = recordsLink.ns;
 			}
+
 			let records = await fetchSia("sia://" + recordsLink.split(".")[0]);
 
 			if (!records || (typeof records != "object" && Array.isArray(records))) {
@@ -124,16 +125,19 @@ async function getAlivePortal() {
 }
 async function fetchSia(siaLink) {
 	const fetch = (await import("node-fetch")).default;
+	let resource;
 	try {
 		let fileMeta = await fetch(mainPortal + siaLink.slice("sia://".length), {
 			headers: { "User-agent": "Sia-Agent" },
-			method: "HEAD",
 		});
-
-		siaLink = fileMeta.headers.get("skynet-skylink");
-		let resource = await fetch(mainPortal + siaLink, {
-			headers: { "User-agent": "Sia-Agent" },
-		});
+		if (siaLink == fileMeta.headers.get("skynet-skylink")) {
+			resource = fileMeta;
+		} else {
+			siaLink = fileMeta.headers.get("skynet-skylink");
+			resource = await fetch(mainPortal + siaLink, {
+				headers: { "User-agent": "Sia-Agent" },
+			});
+		}
 		if (
 			resource.headers.get("content-length") > 20480 ||
 			resource.headers.get("content-type") !== "application/json"
