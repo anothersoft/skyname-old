@@ -126,10 +126,15 @@ async function getAlivePortal() {
 	});
 }
 async function fetchSia(siaLink) {
-	let cached = await skylinkCache.get(siaLink);
+	let cached = await skylinkCache.get(siaLink).catch((e) => {
+		if (e.notFound) {
+			return;
+		}
+	});
+
 	let resolverSkylink;
 	if (cached) {
-		return cached;
+		return JSON.parse(cached.toString());
 	}
 	const fetch = (await import("node-fetch")).default;
 	let resource;
@@ -137,25 +142,27 @@ async function fetchSia(siaLink) {
 		let fileMeta = await fetch(mainPortal + siaLink.slice("sia://".length), {
 			headers: { "User-agent": "Sia-Agent" },
 		});
-		if (siaLink == fileMeta.headers.get("skynet-skylink")) {
+		if (siaLink == "sia://" + fileMeta.headers.get("skynet-skylink")) {
 			resource = fileMeta;
 			resolverSkylink = false;
+			if (
+				resource.headers.get("content-length") > 20480 ||
+				resource.headers.get("content-type") !== "application/json"
+			) {
+				return null;
+			} else {
+				let data = await resource.json();
+
+				if (!resolverSkylink) {
+					skylinkCache.put(siaLink, JSON.stringify(data));
+				}
+				return data;
+			}
 		} else {
-			siaLink = fileMeta.headers.get("skynet-skylink");
+			siaLink = "sia://" + fileMeta.headers.get("skynet-skylink");
 			resource = await fetchSia(siaLink);
 			resolverSkylink = true;
-		}
-		if (
-			resource.headers.get("content-length") > 20480 ||
-			resource.headers.get("content-type") !== "application/json"
-		) {
-			return null;
-		} else {
-			let data = await resource.json();
-			if (!resolverSkylink) {
-				skylinkCache.put(siaLink, data);
-			}
-			return data;
+			return resource;
 		}
 	} catch (error) {
 		return null;
